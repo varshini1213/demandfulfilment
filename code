@@ -1,0 +1,678 @@
+mservices
+package com.example.demospring3;
+
+import com.example.demospring3.model.demand;
+import com.example.demospring3.model.mappingclass;
+import com.example.demospring3.model.member;
+import com.example.demospring3.repository.Repo;
+import com.example.demospring3.repository.MapRepo;
+import com.example.demospring3.repository.Repom;
+import jakarta.transaction.Transactional;
+import org.hibernate.engine.internal.Collections;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Service;
+
+import java.util.*;
+
+@Service
+public class mservice {
+    @Autowired
+    Repom memrep;
+    @Autowired
+    Repo apprep;
+    @Autowired
+    MapRepo maprep;
+
+    public void memberadd(member m) {
+        memrep.save(m);
+    }
+
+    public List<member> memberdisplay() {
+        List<member> s = new ArrayList<member>();
+        memrep.findAll().forEach(s::add);
+        return s;
+    }
+
+    public List<member> displayall(int id) {
+        List<member> allelements = memrep.findAll();
+        List<member> st = new ArrayList<>();
+        demand d = apprep.findById(id).orElseThrow(() -> new RuntimeException("Demand not found"));
+        if (d.getStatus() == null) {
+            return allelements;
+        } else if (d.getStatus().equalsIgnoreCase("open")) {
+            for (member m : allelements) {
+                if (m.getStatus().equalsIgnoreCase("available") && matches(m, d)) {
+                    st.add(m);
+                }
+            }
+            return st;
+        } else {
+            throw new RuntimeException("Demand is closed");
+        }
+    }
+
+    public boolean matches(member m, demand d) {
+        if (m.getLocation().equalsIgnoreCase(d.getCity())) {
+            return true;
+        }
+        if (m.getLevel().equalsIgnoreCase(d.getLevel())) {
+            return true;
+        }
+        for (String st : d.getSkills()) {
+            if (m.getSkills().containsKey(st)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    public List<member> sort(List<member> m) {
+        Comparator<member> comp = Comparator.comparing(member::getDoj).thenComparing(member::getFirst_name).thenComparing(member::getLocation);
+        m.sort(comp);
+        return m;
+    }
+
+    public member Assignment(Integer demandId) {
+        List<member> allmembers = memrep.findAll();
+        List<member> sm = new ArrayList<>();
+        List<member> ts = new ArrayList<>();
+        demand d1 = apprep.findById(demandId).orElseThrow(() -> new RuntimeException("Demand not found"));
+
+        if (d1.getStatus()==null || d1.getStatus().equalsIgnoreCase("open")) {
+            for (member member : allmembers) {
+                if (skills(member, d1)) {
+                    sm.add(member);
+                }
+            }
+            if(sm.size()>1) {
+                for (member x : sm) {
+                    if (x.getLocation().equalsIgnoreCase(d1.getCity()) && x.getLevel().equalsIgnoreCase(d1.getLevel())) {
+                        ts.add(0, x);
+                    }
+                    if(x.getLocation().equalsIgnoreCase(d1.getCity()) || x.getLevel().equalsIgnoreCase(d1.getLevel())){
+                        ts.add(0,x);
+                    }
+                    if(x.getLevel().equalsIgnoreCase(d1.getLevel()) || x.getLocation().equalsIgnoreCase(d1.getCity())){
+                        ts.add(0,x);
+                    }
+                }
+                return ts.get(0);
+            }
+            else{
+                return sm.get(0);
+            }
+
+        }
+        else {
+            throw new RuntimeException("Demand is closed");
+
+        }
+    }
+
+    public Boolean skills(member member, demand d1) {
+        for (String st : d1.getSkills()) {
+            if (member.getStatus().equalsIgnoreCase("available") && member.getSkills().containsKey(st) && (member.getLocation().equalsIgnoreCase(d1.getCity()) && member.getLevel().equalsIgnoreCase(d1.getLevel()))) {
+                return true;
+            } if (member.getStatus().equalsIgnoreCase("available") &&member.getSkills().containsKey(st) && (member.getLocation().equalsIgnoreCase(d1.getCity()) || member.getLevel().equalsIgnoreCase(d1.getLevel()))) {
+                return true;
+            } if (member.getStatus().equalsIgnoreCase("available") &&member.getSkills().containsKey(st) && (member.getLevel().equalsIgnoreCase(d1.getLevel()) || member.getLocation().equalsIgnoreCase(d1.getCity()))) {
+                return true;
+            } if (member.getStatus().equalsIgnoreCase("available") &&member.getSkills().containsKey(st)) {
+                return true;
+            }
+
+
+        }
+        return false;
+    }
+
+    public mappingclass assign(int id) {
+
+        member mj = Assignment(id);
+        int member_id = mj.getId();
+        if (member_id != -1) {
+            member mi = memrep.findById(member_id).orElseThrow(() -> new RuntimeException("Member not found"));
+            mi.setStatus("Assigned");
+            demand di = apprep.findById(id).orElseThrow(() -> new RuntimeException("Member not found"));
+            di.setStatus("Closed");
+        } else {
+            demand di = apprep.findById(id).orElseThrow(() -> new RuntimeException("Member not found"));
+            di.setStatus("Not_Fulfilled");
+        }
+        mappingclass map = new mappingclass(id, member_id);
+        return maprep.save(map);
+    }
+
+}
+
+dservices
+package com.example.demospring3;
+
+import com.example.demospring3.model.demand;
+import com.example.demospring3.model.member;
+import com.example.demospring3.repository.Repom;
+import com.example.demospring3.repository.Repo;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.json.JsonParser;
+import org.springframework.boot.json.JsonParserFactory;
+import org.springframework.stereotype.Service;
+import org.springframework.validation.annotation.Validated;
+
+import java.util.*;
+import java.util.stream.Collectors;
+
+@Service
+public class dservice {
+    @Autowired
+    Repo apprep;
+    @Autowired
+    Repom memrep;
+    public void demandadd(demand d){
+        apprep.save(d);
+    }
+    public List<demand> demanddisplay(){
+        List<demand> s=new ArrayList<demand>();
+        apprep.findAll().forEach(s::add);
+        return s;
+    }
+    @Validated
+    public List<demand> displayallparameters(demand dem) {
+        List<demand> demo = new ArrayList<>();
+        for (demand d : apprep.findAll()) {
+            if (dem.getId()!=0) {
+                if (d.getId() == dem.getId() && !demo.contains(d)) {
+                    demo.add(d);
+                }
+            }
+            if (dem.getLevel()!=null) {
+                if (d.getLevel().equalsIgnoreCase(dem.getLevel()) && !demo.contains(d)) {
+                    demo.add(d);
+                }
+            }
+            if (dem.getCity()!=null) {
+                if (d.getCity().equalsIgnoreCase(dem.getCity()) && !demo.contains(d)) {
+                    demo.add(d);
+                }
+            }
+            if (dem.getStatus()!=null && d.getStatus()!=null) {
+                if (d.getStatus().equalsIgnoreCase(dem.getStatus()) && !demo.contains(d)) {
+                    demo.add(d);
+                }
+            }
+            if (dem.getDuration()!=null) {
+                if (d.getDuration().equals(dem.getDuration()) && !demo.contains(d)) {
+                    demo.add(d);
+                }
+            }
+            if (dem.getMgr_name()!=null) {
+                if (d.getMgr_name().equalsIgnoreCase(dem.getMgr_name()) && !demo.contains(d)) {
+                    demo.add(d);
+                }
+            }
+            if (dem.getStartdate()!=null) {
+                if (d.getStartdate().equals(dem.getStartdate()) && !demo.contains(d)) {
+                    demo.add(d);
+                }
+            }
+            if (d.getProject_name().equalsIgnoreCase(dem.getProject_name()) && !demo.contains(d)) {
+                demo.add(d);
+            }
+            if (dem.getSkills()!=null) {
+                for (String st : d.getSkills()) {
+                    for (String st1 : dem.getSkills()) {
+                        if (st.equalsIgnoreCase(st1) && !demo.contains(d)) {
+                            demo.add(d);
+                        }
+                    }
+                }
+            }
+        }
+        return demo;
+
+    }
+    public boolean contains1(demand d,List<demand> mt){
+        if(mt.size()!=0){
+            for(demand d1: mt){
+                if(d1.getId()!=d.getId()){
+                    return false;
+                }
+            }
+        }
+        return true;
+    }
+}
+
+application.properties
+spring.h2.console.enabled=true
+spring.h2.console.path=/h2console
+spring.datasource.url=jdbc:h2:file:C:/h2db2/sample2
+##spring.datasource.url=jdbc:h2:mem:Studentdb
+spring.datasource.driverClassName= org.h2.Driver
+spring.datasource.username=sa
+spring.datasource.password=
+spring.jpa.database-platform=org.hibernate.dialect.H2Dialect
+spring.jpa.hibernate.ddl-auto=update
+spring.jpa.open-in-view=false
+
+maprepo
+package com.example.demospring3.repository;
+
+import com.example.demospring3.model.mappingclass;
+import org.springframework.data.jpa.repository.JpaRepository;
+
+import java.util.List;
+
+public interface MapRepo extends JpaRepository<mappingclass,Integer> {
+
+}
+demand repo
+package com.example.demospring3.repository;
+import com.example.demospring3.model.demand;
+import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
+
+import java.util.List;
+
+public interface Repo extends JpaRepository<demand,Integer> {
+
+
+}
+member repo
+package com.example.demospring3.repository;
+
+import com.example.demospring3.model.member;
+import org.springframework.data.jpa.repository.JpaRepository;
+
+
+
+public interface Repom extends JpaRepository<member,Integer> {
+
+}
+controller
+demand
+package com.example.demospring3.controller;
+
+import com.example.demospring3.dservice;
+import com.example.demospring3.model.demand;
+import com.example.demospring3.model.member;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.*;
+import org.springframework.web.client.RestTemplate;
+
+import java.util.List;
+
+@RestController
+public class appcontroller {
+    @Autowired
+    dservice appser;
+
+    @PostMapping("/demand")
+    public void demandadd(@RequestBody demand d){
+        appser.demandadd(d);
+    }
+
+
+    @RequestMapping("/demand/display")
+    public List<demand> demanddisplay() {
+        return appser.demanddisplay();
+    }
+
+    @GetMapping(value = "/demand")
+    public List<demand> displyall(@RequestBody demand d1) {
+        return appser.displayallparameters(d1);
+    }
+
+
+
+}
+
+map
+package com.example.demospring3.controller;
+
+import com.example.demospring3.mservice;
+import com.example.demospring3.model.mappingclass;
+import com.example.demospring3.model.member;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.web.bind.annotation.*;
+
+import java.util.List;
+
+@RestController
+public class mapcontroller {
+
+    @Autowired
+    mservice memser;
+
+    @GetMapping("/map/{id}")
+    public mappingclass map(@PathVariable Integer id){
+
+        return memser.assign(id);
+    }
+}
+member
+package com.example.demospring3.controller;
+
+import com.example.demospring3.mservice;
+import com.example.demospring3.model.demand;
+import com.example.demospring3.model.member;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.web.bind.annotation.*;
+
+import java.util.ArrayList;
+import java.util.List;
+@RestController
+public class memcontroller {
+
+    @Autowired
+    mservice memser;
+
+
+    @PostMapping("/member")
+    public void memberadd(@RequestBody member m){
+        memser.memberadd(m);
+    }
+
+
+    @RequestMapping("/member/display")
+    public List<member> memberdisplay(){
+        return memser.memberdisplay();
+    }
+
+
+    List<member> mt=new ArrayList<>();
+    @RequestMapping(method=RequestMethod.GET,value="/display/{id}")
+    public List<member> displayall(@PathVariable int id){
+        return memser.sort(memser.displayall(id));
+    }
+    @GetMapping(value="/displayall/{id}")
+    public member display(@PathVariable int id){
+        return memser.Assignment(id);
+    }
+
+
+
+
+
+}
+
+model
+demand
+package com.example.demospring3.model;
+
+import jakarta.persistence.Entity;
+import jakarta.persistence.Id;
+import jakarta.persistence.Table;
+
+import java.util.Date;
+import java.util.List;
+@Entity
+@Table(name="demand")
+public class demand {
+    @Id
+    private int id;
+    private String project_name;
+    private String mgr_name;
+    private String level;
+    private String city;
+    private List<String> skills;
+    private String status;
+    private String duration;
+
+    private Date startdate;
+
+
+public demand(){
+
+}
+    public demand(int id, String project_name, String mgr_name, String level, String city, List<String> skills, String status, String duration, Date startdate) {
+        this.id = id;
+        this.project_name = project_name;
+        this.mgr_name = mgr_name;
+        this.level = level;
+        this.city = city;
+        this.skills = skills;
+        this.status = status;
+        this.duration = duration;
+        this.startdate = startdate;
+    }
+
+    public int getId() {
+        return id;
+    }
+
+    public void setId(int id) {
+        this.id = id;
+    }
+
+    public String getProject_name() {
+        return project_name;
+    }
+
+    public void setProject_name(String project_name) {
+        this.project_name = project_name;
+    }
+
+    public String getMgr_name() {
+        return mgr_name;
+    }
+
+    public void setMgr_name(String mgr_name) {
+        this.mgr_name = mgr_name;
+    }
+
+    public String getLevel() {
+        return level;
+    }
+
+    public void setLevel(String level) {
+        this.level = level;
+    }
+
+    public String getCity() {
+        return city;
+    }
+
+    public void setCity(String city) {
+        this.city = city;
+    }
+
+    public List<String> getSkills() {
+        return skills;
+    }
+
+    public void setSkills(List<String> skills) {
+        this.skills = skills;
+    }
+
+    public String getStatus() {
+        return status;
+    }
+
+    public void setStatus(String status) {
+        this.status = status;
+    }
+
+    public String getDuration() {
+        return duration;
+    }
+
+    public void setDuration(String duration) {
+        this.duration = duration;
+    }
+
+    public Date getStartdate() {
+        return  startdate;
+    }
+
+    public void setStartdate(Date startdate) {
+        this.startdate = startdate;
+    }
+}
+
+member
+package com.example.demospring3.model;
+
+import jakarta.persistence.Entity;
+import jakarta.persistence.Id;
+import jakarta.persistence.Table;
+
+import java.util.Date;
+import java.util.HashMap;
+@Entity
+@Table(name="member")
+public class member {
+
+    @Id
+    private int id;
+    private String eid;
+    private String first_name;
+    private String last_name;
+    private Date doj;
+    private String level;
+    private String location;
+    private int overall_experience;
+    private String status;
+    private HashMap<String ,Integer> skills;
+
+    public member() {
+
+    }
+
+    public member(int id, String eid, String first_name, String last_name, Date doj, String level, String location, int overall_experience, String status, HashMap<String, Integer> skills) {
+        this.id = id;
+        this.eid = eid;
+        this.first_name = first_name;
+        this.last_name = last_name;
+        this.doj = doj;
+        this.level = level;
+        this.location = location;
+        this.overall_experience = overall_experience;
+        this.status = status;
+        this.skills = skills;
+    }
+
+    public int getId() {
+        return id;
+    }
+
+    public void setId(int id) {
+        this.id = id;
+    }
+
+    public String getEid() {
+        return eid;
+    }
+
+    public void setEid(String eid) {
+        this.eid = eid;
+    }
+
+    public String getFirst_name() {
+        return first_name;
+    }
+
+    public void setFirst_name(String first_name) {
+        this.first_name = first_name;
+    }
+
+    public String getLast_name() {
+        return last_name;
+    }
+
+    public void setLast_name(String last_name) {
+        this.last_name = last_name;
+    }
+
+    public Date getDoj() {
+        return doj;
+    }
+
+    public void setDoj(Date doj) {
+        this.doj = doj;
+    }
+
+    public String getLevel() {
+        return level;
+    }
+
+    public void setLevel(String level) {
+        this.level = level;
+    }
+
+    public String getLocation() {
+        return location;
+    }
+
+    public void setLocation(String location) {
+        this.location = location;
+    }
+
+    public int getOverall_experience() {
+        return overall_experience;
+    }
+
+    public void setOverall_experience(int overall_experience) {
+        this.overall_experience = overall_experience;
+    }
+
+    public String getStatus() {
+        return status;
+    }
+
+    public void setStatus(String status) {
+        this.status = status;
+    }
+
+    public HashMap<String, Integer> getSkills() {
+        return skills;
+    }
+
+    public void setSkills(HashMap<String, Integer> skills) {
+        this.skills = skills;
+    }
+}
+
+map
+package com.example.demospring3.model;
+
+import jakarta.persistence.Entity;
+import jakarta.persistence.Id;
+
+import java.util.HashMap;
+
+@Entity
+public class mappingclass {
+    @Id
+    int demandId;
+    int memberId;
+
+    public mappingclass() {
+    }
+
+    public mappingclass(int demandId, int memberId) {
+        this.demandId = demandId;
+        this.memberId = memberId;
+    }
+
+    public int getDemandId() {
+        return demandId;
+    }
+
+    public void setDemandId(int demandId) {
+        this.demandId = demandId;
+    }
+
+    public int getMemberId() {
+        return memberId;
+    }
+
+    public void setMemberId(int memberId) {
+        this.memberId = memberId;
+    }
+}
+
+
+
