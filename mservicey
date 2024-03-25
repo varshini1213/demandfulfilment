@@ -1,0 +1,188 @@
+public member displayone(List<member> mt,int id){
+        demand d = apprep.findById(id).orElseThrow(()-> new RuntimeException("Demand not found"));
+        List<member> m1=new ArrayList<>();
+        List<member> m2=new ArrayList<>();
+        List<member> m3=new ArrayList<>();
+        List<member> m4=new ArrayList<>();
+        int max=0;
+        member dd=null;
+        for(member m:mt) {
+            int k=0,f=0,level=0,loc=0;
+            for (String st : d.getSkills()) {
+                if (m.getSkills().containsKey(st)) {
+                    k++;
+                }
+            }
+            if(k==d.getSkills().size()){
+                f++;
+            }
+            if(m.getLevel().equalsIgnoreCase(d.getLevel())){
+                level++;
+            }
+
+            if(m.getLocation().equalsIgnoreCase(d.getCity())){
+                loc++;
+            }
+            if(f==1 && level==1 && loc==1){
+                m1.add(m);
+            }
+            else if(f==1 && level==1 && loc==0){
+                m2.add(m);
+            }
+            else if(f==1 && level==0 && loc==1){
+                m3.add(m);
+            }
+            else if(f==1 && level==0 && loc==0){
+                m4.add(m);
+            }
+            Comparator <member> comp=Comparator.comparing(member::getOverall_experience).reversed();
+            m1.sort(comp);
+            Comparator <member> comp1=Comparator.comparing(member::getOverall_experience).reversed();
+            m2.sort(comp1);
+            Comparator <member> comp2=Comparator.comparing(member::getOverall_experience).reversed();
+            m3.sort(comp2);
+            Comparator <member> comp3=Comparator.comparing(member::getOverall_experience).reversed();
+            m4.sort(comp3);
+            if(m1.size()!=0){
+                dd=m1.get(0);
+            }
+            else if(m2.size()!=0){
+                dd=m2.get(0);
+            }
+            else if(m3.size()!=0){
+                dd=m3.get(0);
+            }
+            else{
+                dd=m4.get(0);
+            }
+        }
+        return dd;
+    }
+
+    @Transactional
+    public mappingclass displayalldata(int id){
+        List<member> list1=displayall(id);
+        member list=displayone(list1,id);
+        demand d2 = apprep.findById(id).orElseThrow(()-> new RuntimeException("Demand not found"));
+        int mi=list.getId();
+        if(mi > 0) {
+            Optional <member> p1 = memrep.findById(mi);
+            System.out.println(mi);
+            p1.get().setStatus("Assigned");
+            Optional <demand> q1 = apprep.findById(id);
+            q1.get().setStatus("closed");
+        }
+        else{
+            demand d1 = apprep.findById(id).orElseThrow(() -> new RuntimeException("Member not found"));
+            d1.setStatus("Not_Fulfilled");
+        }
+        HashMap<String,Integer> skill=list.getSkills();
+        String level=list.getLevel();
+        String loc= list.getLocation();
+        String first = list.getFirst_name();
+        String last = list.getLast_name();
+        String mgr_name=d2.getMgr_name();
+        mappingclass map=new mappingclass(id,mi,level,loc,first,last,mgr_name);
+        return maprep.save(map);
+    }
+
+    public List<mappingclass> project(){
+        List<mappingclass> s=new ArrayList<mappingclass>();
+        maprep.findAll().forEach(s::add);
+        return s;
+    }
+}
+
+
+
+
+
+
+
+
+
+ @Id
+    private int demand_id;
+    private int e_id;
+    private String first_name;
+    private String last_name;
+
+    private String level;
+    private String location;
+    private String mgr_name;
+
+
+    public mappingclass(){
+
+    }
+
+    public mappingclass(int demand_id, int e_id, String level, String location,String first_name, String last_name,String mgr_name) {
+        this.demand_id = demand_id;
+        this.e_id = e_id;
+
+        this.level = level;
+        this.location = location;
+        this.first_name = first_name;
+        this.last_name = last_name;
+        this.mgr_name=mgr_name;
+    }
+
+    public int getDemand_id() {
+        return demand_id;
+    }
+
+    public void setDemand_id(int demand_id) {
+        this.demand_id = demand_id;
+    }
+
+    public int getE_id() {
+        return e_id;
+    }
+
+    public void setE_id(int e_id) {
+        this.e_id = e_id;
+    }
+
+
+
+
+
+    public String getLevel() {
+        return level;
+    }
+
+    public void setLevel(String level) {
+        this.level = level;
+    }
+
+    public String getLocation() {
+        return location;
+    }
+
+    public void setLocation(String location) {
+        this.location = location;
+    }
+
+    public String getFirst_name() {
+        return first_name;
+    }
+
+    public void setFirst_name(String first_name) {
+        this.first_name = first_name;
+    }
+
+    public String getLast_name() {
+        return last_name;
+    }
+
+    public void setLast_name(String last_name) {
+        this.last_name = last_name;
+    }
+
+    public String getMgr_name() {
+        return mgr_name;
+    }
+
+    public void setMgr_name(String mgr_name) {
+        this.mgr_name = mgr_name;
+    }
