@@ -1,0 +1,1334 @@
+<%@ taglib prefix="form" uri="http://www.springframework.org/tags/form"%>
+<%@ taglib prefix="spring" uri="http://www.springframework.org/tags"%>
+<%@ taglib prefix="sec" uri="http://www.springframework.org/security/tags" %>
+<%@ taglib uri="http://java.sun.com/jsp/jstl/core" prefix="c"%>
+<%@ taglib uri="http://java.sun.com/jsp/jstl/functions" prefix="fn"%>
+
+<%@page import="java.util.HashMap"%>
+<%@page import="java.util.List"%>
+<%@page import="com.tuc.adviser.dto.FilterDto"%>
+<%@page import="com.tuc.adviser.dto.NamedFilterDto"%>
+<%@page import="com.tuc.adviser.dto.ParameterDto"%>
+<%@page import="com.tuc.adviser.dto.CharacteristicDto"%>
+<%@page import="com.tuc.adviser.enumeration.ParameterDataType"%>
+<%@page import="com.tuc.adviserweb.common.ApplicationConstant"%>
+<%@page import="com.tuc.adviserweb.controller.form.TemplateForm"%>
+<%@page import="org.springframework.web.util.HtmlUtils" %>
+<%@page import="org.owasp.esapi.ESAPI"%>
+
+<!DOCTYPE html>	
+<html lang="en" >
+<head>
+
+<!-- TITLE -->
+<!-- ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ -->
+<%
+	if (request.getAttribute("Type") != null) {
+%>
+<title><spring:message code='editFeature' /></title>
+<%
+	} else {
+%>
+<title><spring:message code='addFeature' /></title>
+<%
+	}
+%>
+<!-- ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ -->
+<!-- END TITLE -->
+<meta http-equiv="Content-Type" content="text/html; charset=iso-8859-1">
+<meta http-equiv="X-UA-Compatible" content="IE=edge">	
+<link rel="stylesheet" href="<c:out value="${pageContext.request.contextPath}"/>/common/css/jquery-ui.css" 
+	type="text/css" />
+
+<link rel="stylesheet" href="common/css/TUApplCommon.css"
+	type="text/css">
+<link rel="stylesheet" href="common/css/TUApplContext.css"
+	type="text/css">
+<link rel="stylesheet" href="common/css/TUApplDetails.css"
+	type="text/css">
+<link rel="stylesheet" href="common/css/TUApplList.css" type="text/css">
+<link rel="stylesheet" href="common/css/TUApplPopup.css" type="text/css">
+<link rel="stylesheet" href="common/css/TUApplValueSelection.css"
+	type="text/css">
+<!-- STYLES -->
+<!-- ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ -->
+<!-- *** include custom styles here *** -->
+<link rel="stylesheet" href="common/css/AdviserWeb.css" type="text/css">
+<!-- ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ -->
+<!-- END STYLES -->
+
+<!-- JAVASCRIPT -->
+<!-- ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ -->
+
+<!-- NEED THIS TO ALLOW USE OF COMMON FUNCTIONS -->
+<script src="<c:out value="${pageContext.request.contextPath}"/>/common/javascript/jquery.min.js" type="text/javascript"></script>
+<script src="<c:out value="${pageContext.request.contextPath}"/>/common/javascript/chosen.jquery.js" type="text/javascript"></script>
+<script language="JavaScript" src="common/javascript/common.js"></script>
+<script language="JavaScript"
+	src="common/javascript/sectionSelection.js"></script>
+<script language="JavaScript" src="common/javascript/formattingHints.js"></script>
+<script language="JavaScript" src="common/javascript/form_checks.js"></script>
+<link rel="stylesheet" href="common/javascript/docsupport/style.css">
+
+<link rel="stylesheet" href="common/css/chosen.css">
+
+<script src="common/javascript/jquery.min.js" type="text/javascript"></script>
+<script src="common/javascript/chosen.jquery.js" type="text/javascript"></script>
+
+<script type="text/javascript"
+	src="<c:url value="/js/prototype_helpers/prototype.js"/>"></script>
+
+
+<script>
+	function initializePage() {
+		<c:set var="char_Type" value='<%=HtmlUtils.htmlEscape(request.getParameter("charType")!= null?request.getParameter("charType"):"")%>'/>
+		var charType ='<%= HtmlUtils.htmlEscape("${char_Type}" )%>';
+		if (charType != null
+				&& charType == document.getElementById('premiumCharacteristic').value) {
+			document.getElementById('premiumCharacteristic').checked = true;
+			premiumButtonClick();
+		} else {
+			document.getElementById('standardCharacteristic').checked = true;
+			standardButtonClick();
+		}
+	}
+	function standardButtonClick() {
+		show("characteristicIddiv", "block");
+		hide("premiumCharacteristicIddiv");
+		if (document.templateForm.characteristicId[0].value == "") {
+			hide("standardCharacteristicDiv");
+		} else {
+			show("standardCharacteristicDiv", "block");
+		}
+
+	}
+
+	function premiumButtonClick() {
+		show("premiumCharacteristicIddiv", "block");
+		hide("characteristicIddiv");
+		if (document.templateForm.characteristicId[1].value == "") {
+			hide("standardCharacteristicDiv");
+		} else {
+			show("standardCharacteristicDiv", "block");
+		}
+
+	}
+	window.onload = initializePage;
+</script>
+<!-- ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ -->
+<!-- END JAVASCRIPT -->
+<script type="text/javascript">
+	  var token="${_csrf.token}";
+         var header="${_csrf.headerName}";
+	jQuery(document).ready(function() {
+		resizeDialogWindow();
+	});
+<% Object featureNameArray = request.getAttribute(ApplicationConstant.FEATURE_NAME_ARRAY); %>
+<%=HtmlUtils.htmlUnescape(HtmlUtils.htmlEscape(featureNameArray != null ? featureNameArray.toString() : ""))%>
+	// end date validation
+
+	function getParametersorFilters(type) {
+		var temp = "";
+		var tempValue = "";
+		var charType = "";
+		var characteristicId = document.getElementById('characteristicId').value;
+		if (document.getElementById('premiumCharacteristic').checked) {
+			charType = document.getElementById('premiumCharacteristic').value;
+			characteristicId = document.getElementsByName("characteristicId")[1].value;
+		} else {
+			charType = document.getElementById('standardCharacteristic').value;
+			characteristicId = document.getElementsByName("characteristicId")[0].value;
+		}
+
+		if (document.getElementById('parameterSize') != undefined) {
+			var ps = document.getElementById('parameterSize').value;
+			for (var i = 0; i < ps; i++) {
+				if (document.getElementById('newParameterId_' + i) != undefined) {
+					temp = document.getElementById('newParameterId_' + i).value;
+					if (i == ps - 1) {
+						tempValue = tempValue
+								+ document.getElementById(temp).value;
+					} else {
+						tempValue = tempValue
+								+ document.getElementById(temp).value + "_";
+					}
+				}
+			}
+		}
+		if (type == 'C') {
+			tempValue = "";
+		}
+		if (document.templateForm.Type.value == "edit") {
+			var featureNameId = document.templateForm.featureNameId.value;
+			document.templateForm.characteristicId.disabled = true;
+			document.templateForm.characteristicId[0].disabled = true;
+			document.templateForm.characteristicId[1].disabled = true;
+			document.templateForm.featureNameId.disabled = true;
+			document.templateForm.action = "editTemplateDetails.do?featureName="
+					+ featureNameId
+					+ "&characteristicId="
+					+ characteristicId
+					+ "&newParameterValue="
+					+ encodeURIComponent(tempValue)
+					+ "&charType="
+					+ charType;
+			document.templateForm.submit();
+		} else {
+			document.templateForm.action = "getListofParametersorFilters.do?newParameterValue="
+				+ encodeURIComponent(tempValue)
+				+ "&charType="
+				+ charType
+				+ "&characteristicId=" + characteristicId;
+				document.templateForm.submit();
+		}
+	}
+
+	function saveFeature(close) {
+		var flag = false;
+		hide("filterErrorMessage");
+		hide("featureNameErrorId1");
+		hide("featureNameErrorId2");
+		hide("featureNameErrorId3");
+		if ($("errorMop2")) {
+			hide("errorMop2");
+		}
+		if (document.getElementById('standardCharacteristic').checked
+				&& document.templateForm.characteristicId[0].value == ""
+				&& document.templateForm.featureName.value == "") {
+			
+			show("filterErrorMessage", "block");
+			var c = "characteristicIddiv";
+			setObjectClass(c, "requiredError");
+			setObjectClass("featureNameIddiv", "requiredError");
+			hide("featureNameErrorId1");
+			show("featureNameErrorId2", "block");
+			hide("featureNameErrorId3");
+			flag = true;
+			return false;
+		} else if (document.getElementById('standardCharacteristic').checked
+				&& document.templateForm.characteristicId[0].value == "") {
+			show("filterErrorMessage", "block");
+			var c = "characteristicIddiv";
+			setObjectClass(c, "requiredError");
+			hide("featureNameErrorId1");
+			hide("featureNameErrorId2");
+			hide("featureNameErrorId3");
+			flag = true;
+			return false;
+		} else if (document.getElementById('premiumCharacteristic').checked
+				&& document.templateForm.characteristicId[1].value == ""
+				&& document.templateForm.featureName.value == "") {
+			show("filterErrorMessage", "block");
+			var c = "premiumCharacteristicIddiv";
+			setObjectClass(c, "requiredError");
+			setObjectClass("featureNameIddiv", "requiredError");
+			hide("featureNameErrorId1");
+			show("featureNameErrorId2", "block");
+			hide("featureNameErrorId3");
+			flag = true;
+			return false;
+		} else if (document.getElementById('premiumCharacteristic').checked
+				&& document.templateForm.characteristicId[1].value == "") {
+			show("filterErrorMessage", "block");
+			var c = "premiumCharacteristicIddiv";
+			setObjectClass(c, "requiredError");
+			hide("featureNameErrorId1");
+			hide("featureNameErrorId2");
+			hide("featureNameErrorId3");
+			flag = true;
+			return false;
+		} else if (document.templateForm.featureName.value == "") {
+			show("filterErrorMessage", "block");
+			setObjectClass("featureNameIddiv", "requiredError");
+			hide("featureNameErrorId1");
+			show("featureNameErrorId2", "block");
+			hide("featureNameErrorId3");
+			setObjectClass("characteristicIddiv", "required");
+			flag = true;
+			return false;
+		} else if (document.templateForm.featureName.value != "") {
+			var featureName = ($("featureNameId").value).toUpperCase();
+
+			if (!isAlphanumericUnderscore(featureName)) {
+				show("filterErrorMessage", "block");
+				setObjectClass("featureNameIddiv", "requiredError");
+				hide("featureNameErrorId1");
+				hide("featureNameErrorId2");
+				show("featureNameErrorId3", "block");
+				flag = true;
+			}
+			else if (trim(featureName) != "" && trim(featureName).length > 0) {
+				if (!isAlphabet(trim(featureName).charAt(0))) {
+					show("filterErrorMessage", "block");
+					setObjectClass("featureNameIddiv", "requiredError");
+					hide("featureNameErrorId1");
+					hide("featureNameErrorId2");
+					show("featureNameErrorId3", "block");
+					flag = true;
+				}
+				if ((isAlphabet(trim(featureName).charAt(0)))
+						&& (trim(featureName).substring(0, 3) == "BCC")) {
+					show("filterErrorMessage", "block");
+					setObjectClass("featureNameIddiv", "requiredError");
+					hide("featureNameErrorId1");
+					hide("featureNameErrorId2");
+					show("featureNameErrorId3", "block");
+					flag = true;
+				}
+				
+				 // check for dulicate feature 
+				 if (featureNameArray) {
+						for (ii = 0; ii < featureNameArray.length; ii++) {
+							if (trim(featureName) == featureNameArray[ii].toUpperCase()) {
+								flag = true;
+								show("filterErrorMessage", "block");
+								setObjectClass("featureNameIddiv", "requiredError");
+								hide("featureNameErrorId2");
+								show("featureNameErrorId1", "block");
+								hide("featureNameErrorId3");
+								break;
+							}
+						}
+					}
+			}
+		} else {
+			if (document.getElementById('premiumCharacteristic').checked) {
+				setObjectClass("premiumCharacteristicIddiv", "required");
+			} else {
+				setObjectClass("characteristicIddiv", "required");
+			}
+			setObjectClass("featureNameIddiv", "required");
+		}
+
+		document.templateForm.characteristicId[0].disabled = false;
+		document.templateForm.characteristicId[1].disabled = false;
+		document.templateForm.featureNameId.disabled = false;
+
+		var size = document.templateForm.parameterSize.value;
+
+		var parameters = document.templateForm.parameterIDs.value;
+		var parameter_array = parameters.split("|");
+
+		var parameters_a = document.templateForm.parameterAccess.value;
+		var parameter_access = parameters_a.split("|");
+
+		var parameters_d = document.templateForm.parameterDataType.value;
+		var parameter_dataType = parameters_d.split("|");
+
+		var parameters_n = document.templateForm.parameterNames.value;
+		var parameter_name = parameters_n.split("|");
+
+		var arr = new Array();
+		if (document.templateForm.characteristicId[1] != null
+				&& document.templateForm.characteristicId[1].value != "") {
+			arr[0] = document.templateForm.characteristicId[1].value;
+		} else {
+			arr[0] = document.templateForm.characteristicId[0].value;
+		}
+
+		arr[1] = document.templateForm.namedFilterId.value;
+		arr[2] = document.templateForm.Type.value;
+		for (var i = 0; i < size; i++) {
+			var a = i + "_" + parameter_array[i + 1];
+			var divId = a + "_div";
+			var value = document.getElementById(a).value;
+			var access = parameter_access[i + 1];
+			var data_type = parameter_dataType[i + 1];
+			var name = parameter_name[i + 1];
+			
+			// For 23 the user can enter the percentage in -ve no.
+			if (document.templateForm.characteristicId[0].value == 23) {
+				value = trim(value);
+				if (value.length > 0) {
+					if (value.substring(0, 1) == "-") {
+						value = value.substring(1);
+					}
+				}
+			}
+
+
+
+			if (checkValidation(access, data_type, value, name)) {
+				// remove the messages
+				setObjectClass(divId, "required");
+			} else {
+				// set the messages
+				show("filterErrorMessage", "block");
+				setObjectClass(divId, "requiredError");
+				flag = true;
+			}
+			arr[3 + i] = parameter_array[i + 1] + "______"
+					+ document.getElementById(a).value + "______"
+					+ data_type + "______"
+					+ name + "______"
+					+ access;
+			
+			if ((document.templateForm.characteristicId[0].value == 27)
+					|| (document.templateForm.characteristicId[0].value == 39)) {
+
+				if (checkMopGreaterOrEquals2(parameter_array[i + 1], value)) {
+					//sucess
+				} else {
+					// failed in Mop >= 2 check.
+					// set the messages
+					show("filterErrorMessage", "block");
+					show("errorMop2", "block");
+					hide("errorId1");
+					setObjectClass(divId, "requiredError");
+					flag = true;
+				}
+
+			}
+                        if (document.templateForm.characteristicId[1].value == 264) {
+
+                                  hide("monthError_"+i);
+                                  hide("operatorError_"+i);
+
+                        if(!isNumericHyphen(value) && parameter_array[i + 1] == 30){
+                                show("monthError_"+i, "block");
+                                flag=true;
+                        }else if(!validateOperator(value) && parameter_array[i + 1] == 2){
+                                show("operatorError_"+i, "block");
+                                flag=true;
+
+                        }
+                     }
+                }
+
+
+
+		var characteristicName = $("characteristicId").options[$("characteristicId").selectedIndex].text;
+		featureId = document.templateForm.featureId.value;
+		templateId = document.templateForm.templateId.value;
+		// to be deleted
+		if (flag == false) {
+
+			characteristicId = arr[0];
+			namedFilterId = arr[1];
+			type = arr[2];
+			char_string = "";
+			for (i = 3; i < arr.length; i++) {
+				arr_value = arr[i];
+				var arr_value_array = arr_value.split("______");
+				char_string += arr_value_array[0] + "|" 
+							+ arr_value_array[1] + "|"
+							+ arr_value_array[2] + "|"
+							+ arr_value_array[3] + "|"
+							+ arr_value_array[4] + "--"; 
+							
+			}
+			var actionName = "updateFeatureInTemplate.do";
+			var charType = "";
+			if (document.getElementById('premiumCharacteristic').checked) {
+				charType = document.getElementById('premiumCharacteristic').value;
+			} else {
+				charType = document.getElementById('standardCharacteristic').value;
+			}
+			
+			var numberOfTimes;
+			var type = '<%=request.getAttribute("Type")%>';
+			var namedFilterName = $("namedFilterId").options[$("namedFilterId").selectedIndex].text;
+			if(type != null && type != 'edit')
+			{
+				numberOfTimes = document.getElementById('numberOfTimesId').value; 			
+			}
+			var uriParam = "templateId="
+					+ templateId + "&characteristicId=" + characteristicId
+					+ "&characteristicName=" + characteristicName
+					+ "&namedFilterId=" + namedFilterId + "&char_array="
+					+ char_string + "&From=" + close + "&Type=" + type
+					+ "&featureId=" + featureId + "&featureName=" + featureName
+					+ "&charType=" + charType + "&namedFilterName=" + namedFilterName;
+					if(numberOfTimes != null)
+					{
+						uriParam = uriParam + "&numberOfTimes=" + numberOfTimes;
+					}
+			ajaxFunction(actionName, uriParam);
+			if (!(close == undefined || close == "undefined")) {
+				document.templateForm.action = "<%=request.getContextPath() %>/addTemplateFeatures.do";
+                                document.templateForm.submit();
+                                sleep(1000);
+                                window.opener.location=encodeURI(window.opener.location.href);
+                                
+			}
+			return true;
+
+		}
+
+	}
+
+	function saveAndCloseFeature() {
+		if (saveFeature()) {
+			window.returnValue = 11;
+			window.close();
+			window.opener.location=encodeURI(window.opener.location.href);
+		} else {
+			return false;
+		}
+
+	}
+
+	function saveAndMoreFeature() {
+
+		if (saveFeature("Feature")) {
+			$("saveId").disabled = true;
+			$("saveAddId").disabled = true;
+		}
+	}
+	function saveAddFeature() {
+		var templateId = document.templateForm.templateId.value;
+		document.templateForm.action = "addFeature.do"
+		document.templateForm.submit();
+	}
+	function cancelClick() {
+		window.close();
+	}
+
+	function charItemClick(obj) {
+		$("characteristicId").value = obj.value;
+		getParametersorFilters('C');
+	}
+	function ajaxFunction(actionName, uriParam) {
+		var httpxml;
+		try {
+			// Firefox, Opera 8.0+, Safari
+			httpxml = new XMLHttpRequest();
+		} catch (e) {
+			// Internet Explorer
+			try {
+				httpxml = new ActiveXObject("Msxml2.XMLHTTP");
+			} catch (e) {
+				try {
+					httpxml = new ActiveXObject("Microsoft.XMLHTTP");
+				} catch (e) {
+					alert("Your browser does not support AJAX!");
+					return false;
+				}
+			}
+		}
+		uriParam = uriParam + "&sid=" + Math.random();
+		httpxml.open("POST", actionName, false)
+		httpxml.setRequestHeader("Content-type",
+				"application/x-www-form-urlencoded");
+		httpxml.setRequestHeader(header, token);
+		httpxml.send(uriParam);
+		return true;
+	}
+	function sleep(milliseconds) {
+		var start = new Date().getTime();
+		for (var i = 0; i < 1e7; i++) {
+			if ((new Date().getTime() - start) > milliseconds) {
+				break;
+			}
+		}
+	}
+	function resetToDefault() {
+		document.templateForm.reset();
+		document.templateForm.featureName.value = "";
+		//document.templateForm.characteristicId[0].value = "";
+	}
+</script>
+<base target="_self">
+
+</head>
+<body>
+
+
+	<!-- DG: ================================================================================ -->
+	<script type="text/javascript" src="js/wz_tooltip.js"></script>
+	<!-- DG: ================================================================================ -->
+
+	<div id="fixedPopupArea" style="display: block;">
+		<div class="popupForm" id="critDetailsForm" style="display: block;">
+			<div class="popupFormDisplayArea">
+
+				<div class="dataArea" id="editCritDetailsData"
+					style="display: block;">
+					<div class="formPopupCloseLink">
+						<a href="#" onclick="javascript:cancelClick()"><spring:message
+								code='Close_Link' /></a> <span class="linkIconRight"> <a
+							href="#" onclick="javascript:cancelClick()"><img
+								src="common/images/close.gif"
+								alt="<spring:message code='Close_Link'  />" /></a>
+						</span>
+					</div>
+					<div class="titleArea">
+						<%
+							if (request.getAttribute("Type") != null) {
+						%>
+						<h1 id="addTitle">
+							<spring:message code='editFeature' />
+						</h1>
+						<%
+							} else {
+						%>
+						<h1 id="addTitle">
+							<spring:message code='addFeature' />
+						</h1>
+						<%
+							}
+						%>
+					</div>
+					<div id="filterErrorMessage" class="contentPageMessageArea"
+						style="display: none;">
+						<div class="errorArea">
+							<div class="details">
+								<h4>
+									<spring:message code='errMsgGeneral' />
+								</h4>
+							</div>
+						</div>
+					</div>
+
+
+					<div class="introductionArea">
+						<p>
+							<span class="key"><span class="icon"><img
+									src="common/images/required_key.gif" alt="Required" /></span><span
+								class="required"><spring:message code='requiredfield' /></span></span>
+						</p>
+					</div>
+
+
+					<form:form method ="post" action="updateFeatureInTemplate.do" modelAttribute="templateForm" name="templateForm" onsubmit="return false;">
+						<form:hidden path="submitType" value="addFeature" />
+						<form:hidden path="templateId" />
+
+						<div class="formArea">
+
+							<div class="formFieldSection">
+
+								<div class="sectionHeaderArea" style="width: 910px;">
+									<span class="sectionControls"></span>
+									<h3>
+										<spring:message code='Features_Templates' />
+										&nbsp;
+										<spring:message code='details' />
+									</h3>
+									<span class="sectionActions"></span>
+								</div>
+
+								<div class="formFieldsWideGroups">
+									<div class="firstWideGroupArea">
+										<input type="hidden" name="Type"
+											value="<%=request.getAttribute("Type")%>">
+										<div class="formFields1Column">
+											<div class="firstColumnArea">
+												<div class="groupArea">
+													<div class="fieldArea">
+														<div id="featureNameIddiv" class="required">
+															<span class="labelIconLeft"><img
+																src="common/images/required.gif" alt="Required" /></span> <span
+																class="label"><spring:message code='Feature_Name' /></span>
+															<span class="input"> <form:input
+																	class="inputBox200" id="featureNameId"
+																path="featureName" maxlength="35"></form:input>
+															</span> <span class="error" id="featureNameErrorId1"><spring:message
+																	code='errLabel_FeatureNameDuplicate' /></span> <span
+																class="error" id="featureNameErrorId2"><spring:message
+																	code='infoLabel_FeatureName' /></span> <span class="error"
+																id="featureNameErrorId3"><spring:message
+																	code='errLabel_FeatureNameWrong' /></span>
+														</div>
+														<div class="required">
+															<span class="labelIconLeft"><img
+																src="common/images/required.gif" alt="Required" /></span>
+															<div id="charTypeDiv">
+																<span class="label"> <spring:message
+																		code='Characterstic_List' />
+																</span> <span class="radio"> <spring:message
+																		code='StandardCharacteristic_Templates' /> <input
+																	type="radio" id="standardCharacteristic"
+																	value="standardCharacteristic" name="charType"
+																	onclick="javascript:standardButtonClick()"> </input>
+																</span> <span class="radio"> <spring:message
+																		code='PremiumCharacteristic_Templates' /> <input
+																	type="radio" id="premiumCharacteristic"
+																	value="premiumCharacteristic" name="charType"
+																	onclick="javascript:premiumButtonClick()"> </input>
+																</span>
+															</div>
+															<%
+																if (request.getAttribute("Type") != null) {
+															%>
+															<script type="text/javascript">
+																if (document.templateForm.featureNameId.value == "") {
+																	document.templateForm.featureNameId.disabled = false;
+																	document
+																			.getElementById('standardCharacteristic').disabled = false;
+																	document
+																			.getElementById('premiumCharacteristic').disabled = false;
+																} 
+															</script>
+															<%
+																}
+															%>
+														</div>
+														<div id="characteristicIddiv" style="display: none"
+															class="required">
+															<span class="labelIconLeft"> <img
+																src="common/images/required.gif" alt="Required" />
+															</span> <span class="label"><spring:message
+																	code='StandardCharacteristic_Templates' /> </span> <span
+																class="input"> <c:choose>
+																	<c:when test="${requestScope.Type == null}">
+																		<form:select style="width: 350" name="characteristicId" path="characteristicId"
+																			id="characteristicId" class="chosen-select"
+																			onchange="charItemClick(this)">
+																			<form:option value=""></form:option>
+																			<c:if
+																				test="${not empty requestScope.characteristicDtoList}">
+																				<c:forEach var="item"
+																					items="${requestScope.characteristicDtoList}"
+																					varStatus="in">
+																					<c:set var='itemDesc'
+																						value='${item.characteristicDescription}' />
+																					<c:set var="trimObj" value="${itemDesc}" />
+																					<c:choose>
+																						<c:when
+																							test="${requestScope.characteristicId == item.characteristicID}">
+		<option title="${item.characteristicName}" selected="selected" value="${item.characteristicID}"><spring:message code="${item.characteristicDescription}" text="${item.characteristicName}"/></option>
+	</c:when>
+																						<c:otherwise>
+																							<option
+																								title="${item.characteristicName}" value="${item.characteristicID}"><spring:message code="${item.characteristicDescription}" text="${item.characteristicName}" /></option>									</c:otherwise>
+																					</c:choose>
+																				</c:forEach>
+																			</c:if>
+																		</form:select>
+																	</c:when>
+																	<c:otherwise>
+
+																		<form:select name="characteristicId" id="characteristicId" path="characteristicId"
+																			class="selectBox280"
+																			onchange="javascript:getParametersorFilters('C')">
+
+																			<form:option value=""></form:option>
+																			<c:if
+																				test="${not empty requestScope.characteristicDtoList}">
+																				<c:forEach var="item"
+																					items="${requestScope.characteristicDtoList}">
+																					<c:set var='itemDesc'
+																						value='${item.characteristicDescription}' />
+																					<c:set var="trimObj" value="${itemDesc}" />
+																					<c:choose>
+																						<c:when
+																							test="${requestScope.characteristicId == item.characteristicID}">
+																							<form:option
+																								title="${item.characteristicName}"
+																								selected="selected"
+																								value="${item.characteristicID}"><spring:message code="${item.characteristicDescription}" text="${item.characteristicName}" /></form:option>
+
+																						</c:when>
+																						<c:otherwise>
+																							<form:option
+																								title="${item.characteristicName}"
+																								value="${item.characteristicID}"><spring:message code="${item.characteristicDescription}" text="${item.characteristicName}" /></form:option>
+
+																						</c:otherwise>
+																					</c:choose>
+
+																				</c:forEach>
+																			</c:if>
+																		</form:select>
+																		<script type="text/javascript">
+																			document.templateForm.characteristicId.disabled = true;
+																		</script>
+																	</c:otherwise>
+																</c:choose>
+															</span> <span class="error"><spring:message
+																	code='infoLabel_Characteristic' /></span>
+														</div>
+														<div id="premiumCharacteristicIddiv" style="display: none"
+															class="required">
+															<span class="labelIconLeft"><img
+																src="common/images/required.gif" alt="Required" /></span> <span
+																class="label"><spring:message
+																	code='PremiumCharacteristic_Templates' /></span> <span
+																class="input"> <c:choose>
+																	<c:when test="${requestScope.Type == null}">
+																		<form:select style="width: 350" name="characteristicId" path="characteristicId"
+																			id="characteristicId" class="chosen-select"
+																			onchange="charItemClick(this)">
+																			<form:option value=""></form:option>
+																			<c:if
+																				test="${not empty requestScope.premiumCharacteristicDtoList}">
+																				<c:forEach var="item"
+																					items="${requestScope.premiumCharacteristicDtoList}"
+																					varStatus="in">
+																					<c:set var='itemDesc'
+																						value='${item.characteristicDescription}' />
+																					<c:set var="trimObj" value="${itemDesc}" />
+																					<c:choose>
+																						<c:when
+																							test="${requestScope.characteristicId == item.characteristicID}">
+																							<form:option
+																								title="${item.characteristicName}"
+																								selected="selected"
+																								value="${item.characteristicID}"><spring:message code="${item.characteristicDescription}" text="${item.characteristicName}" /></form:option>
+																						</c:when>
+																						<c:otherwise>
+																							<form:option
+																								title="${item.characteristicName}"
+																								value="${item.characteristicID}"><spring:message code="${item.characteristicDescription}" text="${item.characteristicName}" /></form:option>
+																						</c:otherwise>
+																					</c:choose>
+																				</c:forEach>
+																			</c:if>
+
+																		</form:select>
+																	</c:when>
+
+																	<c:otherwise>
+
+																		<form:select name="characteristicId" id="characteristicId" path="characteristicId"
+																			class="selectBox280"
+																			onchange="javascript:getParametersorFilters('C')">
+
+																			<form:option value=""></form:option>
+																			<c:if
+																				test="${not empty requestScope.premiumCharacteristicDtoList}">
+																				<c:forEach var="item"
+																					items="${requestScope.premiumCharacteristicDtoList}">
+																					<c:set var='itemDesc'
+																						value='${item.characteristicDescription}' />
+																					<c:set var="trimObj" value="${itemDesc}" />
+																					<c:choose>
+																						<c:when
+																							test="${requestScope.characteristicId == item.characteristicID}">
+																							<option
+																								title="${item.characteristicName}"
+																								selected="selected"
+																								value="${item.characteristicID}"><spring:message code="${item.characteristicDescription}" text="${item.characteristicName}" /></option>
+
+																						</c:when>
+																						<c:otherwise>
+																							<option
+																								title="${item.characteristicName}"
+																								value="${item.characteristicID}"><spring:message code="${item.characteristicDescription}" text="${item.characteristicName}" /></option>
+
+																						</c:otherwise>
+																					</c:choose>
+
+																				</c:forEach>
+																			</c:if>
+																		</form:select>
+																		<script type="text/javascript">
+																			document.templateForm.characteristicId[1].disabled = true;
+																		</script>
+																	</c:otherwise>
+																</c:choose>
+															</span> <span class="error"><spring:message
+																	code='infoLabel_Characteristic' /></span>
+														</div>
+														<c:if test="${Type != 'edit'}" >
+															<div id="numberOfTimesIddiv" class="required">
+																<span class="labelIconLeft"></span> <span class="label"><spring:message
+																		code='Templates_Number_Of_Times' /></span> <span
+																	class="input"> <form:input id="numberOfTimesId"
+																		cssClass="inputBox200 inputTxtNumberOfTimes"
+																		path="numberOfTimes" maxlength="3"></form:input>
+																</span> <span class="error" id="numberOfTimesId1"><spring:message
+																		code='infoLabel_NumberOfTimes' /></span>
+															</div>
+														</c:if>
+														<div id="standardCharacteristicDiv">
+															<%
+																if (request.getAttribute("parameterDtoList") != null) {
+
+																		String parameterIDs = "";
+																		List parameterDtoList = (List) request.getAttribute("parameterDtoList");
+															%>
+															<input type="hidden" name="parameterSize"
+																value="<%=parameterDtoList.size()%>" id="parameterSize">
+															<%
+																String requiredFlag = "";
+																		String dataType = "";
+																		String paramName = "";
+																		for (int ii = 0; ii < parameterDtoList.size(); ii++) {
+																			ParameterDto parameterDto = (ParameterDto) parameterDtoList.get(ii);
+																			parameterIDs += "|" + parameterDto.getParameterID();
+																			dataType += "|" + parameterDto.getParameterDataType().getId();
+																			paramName += "|" + parameterDto.getParameterName();
+																			if (parameterDto.getIsRequired()) {
+																				requiredFlag += "|Y";
+															%>
+															<div
+																id='<%=ii + "_" + HtmlUtils.htmlEscape(parameterDto.getParameterID()+"") + "_div"%>'
+																class="required">
+																<span class="labelIconLeft"><img
+																	src="common/images/required.gif" alt="Required" /></span>
+																<%
+																	} else {
+																					requiredFlag += "|N";
+																%><div
+																	id='<%=ii + "_" + HtmlUtils.htmlEscape(parameterDto.getParameterID()+"") + "_div"%>'
+																	class="required">
+																	<span class="labelIconLeft">&nbsp;</span>
+																	<%
+																		}
+																	%>
+																	   <span class="label"><spring:message code="<%=HtmlUtils.htmlEscape(parameterDto.getParameterName())%>" text="<%=HtmlUtils.htmlEscape(parameterDto.getParameterName())%>"></spring:message></span>
+																	<%-- DG: TOOLTIP HINTS --%>
+																	<span class="input"> <c:set var="obj"
+																			value="<%=(String) parameterDto.getParameterDesc()%>" />
+																		<c:set var="trimObj" value="${obj}" /> <c:set
+																			var='quot' value='\"' /> <c:set var='repObj'
+																			value='${trimObj}' />
+																			<c:set var="newParameterId" value='<%=ii + "_" + parameterDto.getParameterID()%>'/>
+																			<c:set var="set_parameterIDs" value='<%=parameterIDs%>'/>
+																			<c:set var="set_dataType" value='<%=dataType%>'/>
+																			<%
+ 	if (parameterDto.getParameterDataType() == ParameterDataType.LIST) {
+ 					List<ParameterDto> listParameterValuesList = (List) request
+ 							.getAttribute("listParameterValuesList");
+ %> <select id='<c:out value="${newParameterId}"/>'
+																		name='<c:out value="${newParameterId}"/>'>
+
+																			<%
+																				for (int kk = 0; kk < listParameterValuesList.size(); kk++) {
+																									ParameterDto parameterTypeDto = listParameterValuesList.get(kk);
+																									if (parameterDto.getParameterValue() != null
+																											&& parameterDto.getParameterValue().toString().trim().equalsIgnoreCase(
+																													parameterTypeDto.getParameterID().toString().trim())) {
+																			%>
+																			<option
+																				value='<%=parameterTypeDto.getParameterID()%>'
+																				selected><spring:message code="<%=parameterTypeDto.getParameterDesc()%>" text="<%=parameterTypeDto.getParameterDesc()%>" ></spring:message></option>
+																			<%
+																				}
+
+																									else {
+																			%>
+																			<option
+																				value='<%=parameterTypeDto.getParameterID()%>'><spring:message code="<%=parameterTypeDto.getParameterDesc()%>" text="<%=parameterTypeDto.getParameterDesc()%>" ></spring:message></option>
+																			<%
+																				}
+																								}
+																			%>
+																	</select> <%
+ 	}
+ 	else if (parameterDto.getParameterDataType() == ParameterDataType.DEMOGRAFICO_LIST) {
+															 					List<ParameterDto> listParameterValuesDemografico = (List) request
+															 							.getAttribute("listParameterValuesDemografico");
+															 %> <select id='<c:out value="${newParameterId}"/>'
+																																	name='<c:out value="${newParameterId}"/>'>
+
+																																		<%
+																																			for (int kk = 0; kk < listParameterValuesDemografico.size(); kk++) {
+																																								ParameterDto parameterTypeDto = listParameterValuesDemografico.get(kk);
+																																								if (parameterDto.getParameterValue() != null
+																																										&& parameterDto.getParameterValue().toString().trim().equalsIgnoreCase(
+																																												parameterTypeDto.getParameterID().toString().trim())) {
+																																		%>
+																																		<option
+																																			value='<%=parameterTypeDto.getParameterID()%>'
+																																			selected><spring:message code="<%=parameterTypeDto.getParameterDesc()%>" text="<%=parameterTypeDto.getParameterDesc()%>" ></spring:message></option>
+																																		<%
+																																			}
+
+																																								else {
+																																		%>
+																																		<option
+																																			value='<%=parameterTypeDto.getParameterID()%>'><spring:message code="<%=parameterTypeDto.getParameterDesc()%>" text="<%=parameterTypeDto.getParameterDesc()%>" ></spring:message></option>
+																																		<%
+																																			}
+																																							}
+																																		%>
+																																</select>
+	<%
+ 	}
+ 	else if (parameterDto.getParameterDataType() == ParameterDataType.UTIL_LIST) {
+															 					List<ParameterDto> listParameterValuesUtilization = (List) request
+															 							.getAttribute("listParameterValuesUtilization");
+															 %> <select id='<c:out value="${newParameterId}"/>'
+																																	name='<c:out value="${newParameterId}"/>'>
+
+																																		<%
+																																			for (int kk = 0; kk < listParameterValuesUtilization.size(); kk++) {
+																																								ParameterDto parameterTypeDto = listParameterValuesUtilization.get(kk);
+																																								if (parameterDto.getParameterValue() != null
+																																										&& parameterDto.getParameterValue().toString().trim().equalsIgnoreCase(
+																																												parameterTypeDto.getParameterID().toString().trim())) {
+																																		%>
+																																		<option
+																																			value='<%=parameterTypeDto.getParameterID()%>'
+																																			selected><spring:message code="<%=parameterTypeDto.getParameterDesc()%>" text="<%=parameterTypeDto.getParameterDesc()%>" ></spring:message></option>
+																																		<%
+																																			}
+
+																																								else {
+																																		%>
+																																		<option
+																																			value='<%=parameterTypeDto.getParameterID()%>'><spring:message code="<%=parameterTypeDto.getParameterDesc()%>" text="<%=parameterTypeDto.getParameterDesc()%>" ></spring:message></option>
+																																		<%
+																																			}
+																																							}
+																																		%>
+																																</select>
+																																 <%
+															 	}
+ 	else if (parameterDto.getParameterDataType() == ParameterDataType.SCORE_LIST) {
+ 					List<ParameterDto> listScoreCodeList = (List) request.getAttribute("listScoreValuesList");
+ %> <select id='<c:out value="${newParameterId}"/>'
+																		name='<c:out value="${newParameterId}"/>'>
+
+																			<%
+																				for (int kk = 0; kk < listScoreCodeList.size(); kk++) {
+																									ParameterDto parameterTypeDto = listScoreCodeList.get(kk);
+																									if (parameterDto.getParameterValue() != null
+																											&& parameterDto.getParameterValue().toString().trim().equalsIgnoreCase(
+																													parameterTypeDto.getParameterID().toString().trim())) {
+																			%>
+																			<option
+																				value='<%=parameterTypeDto.getParameterID()%>'
+																				selected><%=parameterTypeDto.getParameterDesc()%></option>
+																			<%
+																				} else {
+																			%>
+																			<option
+																				value='<%=parameterTypeDto.getParameterID()%>'><%=parameterTypeDto.getParameterDesc()%></option>
+																			<%
+																				}
+																								}
+																			%>
+																	</select> <%
+ 	} else if (parameterDto.getParameterDataType() == ParameterDataType.DATE_LIST) {
+ 					List<ParameterDto> listDateTypeList = (List) request
+ 							.getAttribute("listParameterTypeDateValuesList");
+ %> <select id='<c:out value="${newParameterId}"/>'
+																		name='<c:out value="${newParameterId}"/>'>
+																			<%
+																				for (int kk = 0; kk < listDateTypeList.size(); kk++) {
+																									ParameterDto parameterTypeDto = listDateTypeList.get(kk);
+																									if (parameterDto.getParameterValue() != null
+																											&& parameterDto.getParameterValue().toString().trim().equalsIgnoreCase(
+																													parameterTypeDto.getParameterID().toString().trim())) {
+																			%>
+																			<option
+																				value='<%=parameterTypeDto.getParameterID()%>'
+																				selected><spring:message code="<%=parameterTypeDto.getParameterDesc()%>" text="<%=parameterTypeDto.getParameterDesc()%>" ></spring:message></option>
+																			<%
+																				} else {
+																			%>
+																			<option
+																				value='<%=parameterTypeDto.getParameterID()%>'><spring:message code="<%=parameterTypeDto.getParameterDesc()%>" text="<%=parameterTypeDto.getParameterDesc()%>" ></spring:message></option>
+																			<%
+																				}
+																								}
+																			%>
+																	</select> <%
+ 	} 
+ 	else if(request.getAttribute("Type") != "edit") 
+ 	{
+ %> <input type="text"
+																		id='<c:out value="${newParameterId}"/>'
+																		name='<c:out value="${newParameterId}"/>'
+																		value="<%=HtmlUtils.htmlEscape(((String)parameterDto.getParameterValue()).trim())%>"
+																		class="inputBox200" maxlength="80"
+																		onMouseOver="Tip('<spring:message code="${repObj}" text = "${repObj}" />', BGCOLOR, '#FFFFCC', SHADOW, true)"
+																		onMouseOut="UnTip()" onFocus="UnTip()" /> <%
+ 	}
+ 	else
+ 	{
+ 		%> <input type="text"
+				id='<c:out value="${newParameterId}"/>'
+				name='<c:out value="${newParameterId}"/>'
+				value="<%=HtmlUtils.htmlEscape(((String)parameterDto.getParameterValue()).trim())%>"
+				class="inputBox200" maxlength="80"
+				onMouseOut="UnTip()" onFocus="UnTip()" /> <%
+
+ 	}
+ %> <input type="hidden" id="newParameterId_<%=ii%>"
+																		value='<c:out value="${newParameterId}"/>'>
+																	</span>
+																	<%
+																		if (parameterDto.getParameterDataType() == ParameterDataType.STRING) {
+																	%>
+																	<span class="error" id="errorId1"><spring:message
+																			code='errLabel_ParameterString' /></span> <span
+																		class="error" id="errorMop2"><spring:message
+																			code='errMopLessThan2' /></span>
+	
+              <span class="error"
+																		id="operatorError_<%=ii%>" style="display: none;color:#990000"><spring:message
+																			code='errOperator' /></span> <span class="error"
+																		id="monthError_<%=ii%>" style="display: none;color:#990000"><spring:message
+																			code='errMonthVal' /></span>
+																<%
+																		}
+																	%>
+																	<%
+																		if (parameterDto.getParameterDataType() == ParameterDataType.DATE) {
+																	%>
+
+																	<span class="error"><spring:message
+																			code='errLabel_ParameterDate' /> <spring:message
+																			code='Date_Format' /></span>
+																	<%
+																		}
+																	%>
+																	<%
+																		if (parameterDto.getParameterDataType() == ParameterDataType.FLOAT) {
+																	%>
+
+																	<span class="error"><spring:message
+																			code='errLabel_ParameterFloat' /></span>
+																	<%
+																		}
+																	%>
+																	<%
+																		if (parameterDto.getParameterDataType() == ParameterDataType.INTEGER) {
+																	%>
+
+																	<span class="error"><spring:message
+																			code='errLabel_ParameterInteger' /></span>
+																	<%
+																		}
+																	%>
+																</div>
+																<%
+																	}
+																%>
+																<c:set var = "feature_Id" value = '<%=request.getParameter("featureId")%>' />
+																<input type="hidden" name="parameterIDs"
+																	value='<c:out value="${set_parameterIDs}"/>'> <input type="hidden"
+																	name="parameterAccess" value="<%=requiredFlag%>">
+																<input type="hidden" name="parameterDataType"
+																	value='<c:out value="${set_dataType}"/>'> <input type="hidden"
+																	name="parameterNames" value="<%=HtmlUtils.htmlEscape(paramName)%>"> <input
+																	type="hidden" name="featureId"
+																	value='<c:out value="${feature_Id}"/>'>
+																<%
+																	}
+																%>
+															</div>
+														</div>
+													</div>
+
+
+													<!-- HACK TO MAKE THE BACKGROUND STRETCH -->
+													<div class="contentStretchHackLeft">&nbsp;</div>
+													<div class="contentStretchHackRight">&nbsp;</div>
+													<!-- END BACKGROUND HACK -->
+												</div>
+											</div>
+
+											<!-- FILTER -->
+											<div class="wideGroupAreaModified">
+												<div class="">
+													<div class="firstColumnArea">
+														<div class="groupArea">
+															<div class="fieldArea">
+																<div class="required">
+																	<span class="labelIconLeft">&nbsp;</span> <span
+																		class="label"><spring:message
+																			code='Filter_Group' /></span> <span class="input"> <form:select
+																			path="namedFilterId" id="namedFilterId"
+																			cssClass="chosen-select"
+																			onchange="javascript:getParametersorFilters('F')">
+																			<form:option value="">--Select an Option--</form:option>
+																			<c:if test="${not empty userNamedFilterDtoList}">
+                                                                                <c:forEach items="${ userNamedFilterDtoList }" var="userNamedFilterDto">
+                                                                                     <form:option value="${ userNamedFilterDto.namedFilterID}"> ${ userNamedFilterDto.namedFilterName } </form:option>
+                                                                                </c:forEach>
+                                                                            </c:if>
+																		</form:select>
+																	</span>
+																</div>
+															</div>
+														</div>
+													</div>
+
+												</div>
+
+											</div>
+
+
+
+											<div class="formActionSection">
+												<div class="sectionHeaderArea">
+													<h3>Action Section Title</h3>
+												</div>
+
+												<div id="addButtons" class="formActionsVertical">
+													<div class="actionArea" style="margin-right: 0px;">
+														<div class="action">
+															<span class="button"> 
+															<input type="button" id="saveId" onclick="javascript:saveAndCloseFeature();" class="button" value="<spring:message code='createnewjobcontents2' />"/>
+															 <%
+															 	if (request.getAttribute("Type") != null) {
+															 %> <%
+															 	} else {
+															 %>
+															 
+															<%
+																}
+															%>
+															<%
+																if (request.getAttribute("Type") != null) {
+															%>
+															<input type="button" onclick="javascript:cancelClick();" class="buttonCancel" value="<spring:message code='Cancel_Button' />"/>
+														
+														<%
+															} else {
+														%>
+
+														<input type="button" id="saveAddId" onclick="javascript:saveAndMoreFeature();" class="button" value="<spring:message code='saveAndAdd' />"/>
+
+														<input type="button" class="buttonCancel" onclick="javascript:cancelClick();" value="<spring:message code='Cancel_Button' />" />
+														</span>
+													<%
+														}
+													%>
+													</div>
+												</div>
+											</div>
+
+										</div>
+									</div>
+									<%
+										if (request.getAttribute("filterDtoList") != null) {
+												List list = (List) request.getAttribute("filterDtoList");
+												//FilterDto dto = (FilterDto)list.get(0);
+									%>
+									<div class="dataDisplaySection">
+										<div class="sectionHeaderArea" style="width: 909px;">
+											<span class="sectionControls"></span>
+											<h3>
+												<spring:message code='Filter_Group_Details_Filter' />
+											</h3>
+										</div>
+										<div class="list">
+											<table cellspacing="0" cellpadding="0">
+												<thead>
+													<tr class="head">
+
+														<th width="60%"><div class='label'>
+																<spring:message code='Filter/FilterGroup_Name' />
+															</div></th>
+														<th class="code" width="10%"><div class='label'>
+																<spring:message code='Operator_Details_Filter' />
+															</div></th>
+														<th class="code" width="20%"><div class='label'>
+																<spring:message code='Value_Filter' />
+															</div></th>
+													</tr>
+												</thead>
+												<tbody>
+
+													<%
+														for (int ii = 0; ii < list.size(); ii++) {
+																	Object object = list.get(ii);
+																	String temptype = "";
+																	Integer linkid = null;
+																	FilterDto tmpFilterDto = null;
+																	NamedFilterDto tmpNamedFilterDto = null;
+
+																	if (object == null) {
+																		continue;
+																	}
+
+																	if (object instanceof NamedFilterDto) {
+																		tmpNamedFilterDto = (NamedFilterDto) object;
+																		linkid = tmpNamedFilterDto.getNfSeqID();
+																		temptype = "G";
+																	} else if (object instanceof FilterDto) {
+																		tmpFilterDto = (FilterDto) object;
+																		linkid = tmpFilterDto.getNfSeqID();
+																		temptype = "F";
+																	}
+
+																	if ((ii % 2) == 0) {
+													%>
+													<tr class="odd">
+														<%
+															} else {
+														%>
+													
+													<tr class="even">
+														<%
+															}
+														%>
+
+														<%
+															if (tmpFilterDto != null && "F".equals(temptype)) {
+														%>
+														<td width="60%"><div class='label'><spring:message code="<%=tmpFilterDto.getFilterName()%>" text="<%=tmpFilterDto.getFilterName()%>"/></div></td>
+														<%
+															} else if (tmpNamedFilterDto != null && "G".equals(temptype)) {
+														%>
+														<td width="60%"><div class='label'><%=HtmlUtils.htmlEscape(tmpNamedFilterDto.getNamedFilterName())%></div></td>
+														<%
+															}
+														%>
+														<%
+															if (tmpFilterDto != null && "F".equals(temptype)) {
+														%>
+														<td class="code" width="10%"><div class='value'><%=HtmlUtils.htmlEscape((String)(((ParameterDto) ((HashMap) tmpFilterDto.getMapParams()).get("2"))
+									.getParameterValue()))%></div></td>
+														<%
+															} else if (tmpNamedFilterDto != null && "G".equals(temptype)) {
+														%>
+														<td class="code" width="10%"><div class='value'></div></td>
+														<%
+															}
+														%>
+														<%
+															if (tmpFilterDto != null && "F".equals(temptype)) {
+														%>
+														<td class="code" width="20%"><div class='value'><%=HtmlUtils.htmlEscape((String)(((ParameterDto) ((HashMap) tmpFilterDto.getMapParams()).get("3"))
+									.getParameterValue()))%></div></td>
+														<%
+															} else if (tmpNamedFilterDto != null && "G".equals(temptype)) {
+														%>
+														<td class="code" width="20%"><div class='value'></div></td>
+														<%
+															}
+														%>
+													</tr>
+													<%
+														}
+													%>
+												</tbody>
+											</table>
+											<%
+												}
+											%>
+										</div>
+									</div>
+
+
+								</div>
+							</div>
+					</form:form>
+				</div>
+			</div>
+		</div>
+
+		<script type="text/javascript">
+			var x = jQuery.noConflict();
+			var config11 = {
+				'.chosen-select' : {
+					width : "400px"
+				},
+				'.chosen-select-deselect' : {
+					allow_single_deselect : true
+				},
+				'.chosen-select-no-single' : {
+					disable_search_threshold : 10
+				},
+				'.chosen-select-no-results' : {
+					no_results_text : 'Oops, nothing found!'
+				},
+			}
+			for ( var selector1 in config11) {
+				jQuery(selector1).chosen(config11[selector1]);
+			}
+			enableDisableField();
+		</script>
+</body>
+</html>
+
+
+
