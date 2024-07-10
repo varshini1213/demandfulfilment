@@ -1,0 +1,291 @@
+How to solve the issue which is explained below
+I have created an form with radio button of 2 which is A and B
+but the UI is default on the radio button A if you click B and try to move to select the next form which related to B 
+it automatically cahnged to A again .I have developed this with JSP and java Springboot controller
+Assume A=Standard Characteristics B=Premium Characteristics
+
+java Springboot controller code
+
+@Controller
+public class ColombiaTemplateOperationAction extends TemplateOperationAction
+{
+	private static final Logger logger = LogManager.getLogger();
+	
+	@RequestMapping(value = "/updateFeatureInTemplate.do", method = {RequestMethod.POST, RequestMethod.GET})
+	public ModelAndView updateFeatureInTemplate(@ModelAttribute("templateForm") TemplateForm templateForm, BindingResult result, HttpServletRequest httpServletRequest)
+	{
+		return super.updateFeatureInTemplate(templateForm, result, httpServletRequest);
+	}
+	
+JSP CODE
+
+<script>
+	function initializePage() {
+		<c:set var="char_Type" value='<%=HtmlUtils.htmlEscape(request.getParameter("charType")!= null?request.getParameter("charType"):"")%>'/>
+		var charType ='<%= HtmlUtils.htmlEscape("${char_Type}" )%>';
+		if (charType != null
+				&& charType == document.getElementById('premiumCharacteristic').value) {
+			document.getElementById('premiumCharacteristic').checked = true;
+			premiumButtonClick();
+		} else {
+			document.getElementById('standardCharacteristic').checked = true;
+			standardButtonClick();
+		}
+	}
+	function standardButtonClick() {
+		show("characteristicIddiv", "block");
+		hide("premiumCharacteristicIddiv");
+		if (document.templateForm.characteristicId[0].value == "") {
+			hide("standardCharacteristicDiv");
+		} else {
+			show("standardCharacteristicDiv", "block");
+		}
+
+	}
+    function premiumButtonClick() {
+		show("premiumCharacteristicIddiv", "block");
+		hide("characteristicIddiv");
+		if (document.templateForm.characteristicId[1].value == "") {
+			hide("standardCharacteristicDiv");
+		} else {
+			show("standardCharacteristicDiv", "block");
+		}
+
+	}
+	window.onload = initializePage;
+</script>
+
+<form:form method ="post" action="updateFeatureInTemplate.do" modelAttribute="templateForm" name="templateForm" onsubmit="return false;">
+						<form:hidden path="submitType" value="addFeature" />
+						<form:hidden path="templateId" />
+
+     <div class="formArea">
+
+							<div class="formFieldSection">
+
+								<div class="sectionHeaderArea" style="width: 910px;">
+									<span class="sectionControls"></span>
+									<h3>
+										<spring:message code='Features_Templates' />
+										&nbsp;
+										<spring:message code='details' />
+									</h3>
+									<span class="sectionActions"></span>
+								</div>
+
+
+
+
+<div class="formFieldsWideGroups">
+									<div class="firstWideGroupArea">
+										<input type="hidden" name="Type"
+											value="<%=request.getAttribute("Type")%>">
+										<div class="formFields1Column">
+											<div class="firstColumnArea">
+												<div class="groupArea">
+													<div class="fieldArea">
+														<div id="featureNameIddiv" class="required">
+															<span class="labelIconLeft"><img
+																src="common/images/required.gif" alt="Required" /></span> <span
+																class="label"><spring:message code='Feature_Name' /></span>
+															<span class="input"> <form:input
+																	class="inputBox200" id="featureNameId"
+																path="featureName" maxlength="35"></form:input>
+															</span> <span class="error" id="featureNameErrorId1"><spring:message
+																	code='errLabel_FeatureNameDuplicate' /></span> <span
+																class="error" id="featureNameErrorId2"><spring:message
+																	code='infoLabel_FeatureName' /></span> <span class="error"
+																id="featureNameErrorId3"><spring:message
+																	code='errLabel_FeatureNameWrong' /></span>
+														</div>
+														<div class="required">
+															<span class="labelIconLeft"><img
+																src="common/images/required.gif" alt="Required" /></span>
+															<div id="charTypeDiv">
+																<span class="label"> <spring:message
+																		code='Characterstic_List' />
+																</span> <span class="radio"> <spring:message
+																		code='StandardCharacteristic_Templates' /> <input
+																	type="radio" id="standardCharacteristic"
+																	value="standardCharacteristic" name="charType"
+																	onclick="javascript:standardButtonClick()"> </input>
+																</span> <span class="radio"> <spring:message
+																		code='PremiumCharacteristic_Templates' /> <input
+																	type="radio" id="premiumCharacteristic"
+																	value="premiumCharacteristic" name="charType"
+																	onclick="javascript:premiumButtonClick()"> </input>
+																</span>
+															</div>
+															<%
+																if (request.getAttribute("Type") != null) {
+															%>
+															<script type="text/javascript">
+																if (document.templateForm.featureNameId.value == "") {
+																	document.templateForm.featureNameId.disabled = false;
+																	document
+																			.getElementById('standardCharacteristic').disabled = false;
+																	document
+																			.getElementById('premiumCharacteristic').disabled = false;
+																} 
+															</script>
+															<%
+																}
+															%>
+														</div>
+														<div id="characteristicIddiv" style="display: none"
+															class="required">
+															<span class="labelIconLeft"> <img
+																src="common/images/required.gif" alt="Required" />
+															</span> <span class="label"><spring:message
+																	code='StandardCharacteristic_Templates' /> </span> <span
+																class="input"> <c:choose>
+																	<c:when test="${requestScope.Type == null}">
+																		<form:select style="width: 350" name="characteristicId" path="characteristicId"
+																			id="characteristicId" class="chosen-select"
+																			onchange="charItemClick(this)">
+																			<form:option value=""></form:option>
+																			<c:if
+																				test="${not empty requestScope.characteristicDtoList}">
+																				<c:forEach var="item"
+																					items="${requestScope.characteristicDtoList}"
+																					varStatus="in">
+																					<c:set var='itemDesc'
+																						value='${item.characteristicDescription}' />
+																					<c:set var="trimObj" value="${itemDesc}" />
+																					<c:choose>
+																						<c:when
+																							test="${requestScope.characteristicId == item.characteristicID}">
+		<option title="${item.characteristicName}" selected="selected" value="${item.characteristicID}"><spring:message code="${item.characteristicDescription}" text="${item.characteristicName}"/></option>
+	</c:when>
+																						<c:otherwise>
+																							<option
+																								title="${item.characteristicName}" value="${item.characteristicID}"><spring:message code="${item.characteristicDescription}" text="${item.characteristicName}" /></option>									</c:otherwise>
+																					</c:choose>
+																				</c:forEach>
+																			</c:if>
+																		</form:select>
+																	</c:when>
+																	<c:otherwise>
+
+																		<form:select name="characteristicId" id="characteristicId" path="characteristicId"
+																			class="selectBox280"
+																			onchange="javascript:getParametersorFilters('C')">
+
+																			<form:option value=""></form:option>
+																			<c:if
+																				test="${not empty requestScope.characteristicDtoList}">
+																				<c:forEach var="item"
+																					items="${requestScope.characteristicDtoList}">
+																					<c:set var='itemDesc'
+																						value='${item.characteristicDescription}' />
+																					<c:set var="trimObj" value="${itemDesc}" />
+																					<c:choose>
+																						<c:when
+																							test="${requestScope.characteristicId == item.characteristicID}">
+																							<form:option
+																								title="${item.characteristicName}"
+																								selected="selected"
+																								value="${item.characteristicID}"><spring:message code="${item.characteristicDescription}" text="${item.characteristicName}" /></form:option>
+
+																						</c:when>
+																						<c:otherwise>
+																							<form:option
+																								title="${item.characteristicName}"
+																								value="${item.characteristicID}"><spring:message code="${item.characteristicDescription}" text="${item.characteristicName}" /></form:option>
+
+																						</c:otherwise>
+																					</c:choose>
+
+																				</c:forEach>
+																			</c:if>
+																		</form:select>
+																		<script type="text/javascript">
+																			document.templateForm.characteristicId.disabled = true;
+																		</script>
+																	</c:otherwise>
+																</c:choose>
+															</span> <span class="error"><spring:message
+																	code='infoLabel_Characteristic' /></span>
+														</div>
+														<div id="premiumCharacteristicIddiv" style="display: none"
+															class="required">
+															<span class="labelIconLeft"><img
+																src="common/images/required.gif" alt="Required" /></span> <span
+																class="label"><spring:message
+																	code='PremiumCharacteristic_Templates' /></span> <span
+																class="input"> <c:choose>
+																	<c:when test="${requestScope.Type == null}">
+																		<form:select style="width: 350" name="characteristicId" path="characteristicId"
+																			id="characteristicId" class="chosen-select"
+																			onchange="charItemClick(this)">
+																			<form:option value=""></form:option>
+																			<c:if
+																				test="${not empty requestScope.premiumCharacteristicDtoList}">
+																				<c:forEach var="item"
+																					items="${requestScope.premiumCharacteristicDtoList}"
+																					varStatus="in">
+																					<c:set var='itemDesc'
+																						value='${item.characteristicDescription}' />
+																					<c:set var="trimObj" value="${itemDesc}" />
+																					<c:choose>
+																						<c:when
+																							test="${requestScope.characteristicId == item.characteristicID}">
+																							<form:option
+																								title="${item.characteristicName}"
+																								selected="selected"
+																								value="${item.characteristicID}"><spring:message code="${item.characteristicDescription}" text="${item.characteristicName}" /></form:option>
+																						</c:when>
+																						<c:otherwise>
+																							<form:option
+																								title="${item.characteristicName}"
+																								value="${item.characteristicID}"><spring:message code="${item.characteristicDescription}" text="${item.characteristicName}" /></form:option>
+																						</c:otherwise>
+																					</c:choose>
+																				</c:forEach>
+																			</c:if>
+
+																		</form:select>
+																	</c:when>
+
+																	<c:otherwise>
+
+																		<form:select name="characteristicId" id="characteristicId" path="characteristicId"
+																			class="selectBox280"
+																			onchange="javascript:getParametersorFilters('C')">
+
+																			<form:option value=""></form:option>
+																			<c:if
+																				test="${not empty requestScope.premiumCharacteristicDtoList}">
+																				<c:forEach var="item"
+																					items="${requestScope.premiumCharacteristicDtoList}">
+																					<c:set var='itemDesc'
+																						value='${item.characteristicDescription}' />
+																					<c:set var="trimObj" value="${itemDesc}" />
+																					<c:choose>
+																						<c:when
+																							test="${requestScope.characteristicId == item.characteristicID}">
+																							<option
+																								title="${item.characteristicName}"
+																								selected="selected"
+																								value="${item.characteristicID}"><spring:message code="${item.characteristicDescription}" text="${item.characteristicName}" /></option>
+
+																						</c:when>
+																						<c:otherwise>
+																							<option
+																								title="${item.characteristicName}"
+																								value="${item.characteristicID}"><spring:message code="${item.characteristicDescription}" text="${item.characteristicName}" /></option>
+
+																						</c:otherwise>
+																					</c:choose>
+
+																				</c:forEach>
+																			</c:if>
+																		</form:select>
+																		<script type="text/javascript">
+																			document.templateForm.characteristicId[1].disabled = true;
+																		</script>
+																	</c:otherwise>
+																</c:choose>
+															</span> <span class="error"><spring:message
+																	code='infoLabel_Characteristic' /></span>
+														</div>
